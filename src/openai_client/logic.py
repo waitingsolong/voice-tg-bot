@@ -36,7 +36,5 @@ async def run_assistant(tid: int) -> str:
 
     messages = await client.beta.threads.messages.list(thread_id=tid)
     
-    await save_messages_to_temp(tid)
-    
     response = messages.data[0].content[0].text.value
     return response
