@@ -32,12 +32,31 @@ async def authenticate(uid: str) -> str:
     return tid
 
 
-async def run_assistant(tid: int) -> str:
+async def run_assistant(tid: int, timeout: float = 60.0) -> str:
+    """
+    Runs an assistant for a given thread ID and returns the response in text format
+
+    Returns:
+        str: The response
+
+    Raises:
+        Exception: Waiting so long or unexpected status
+    """
     run = await client.beta.threads.runs.create(thread_id=tid, assistant_id=global_aid)
 
-    while run.status != "completed":
-        await asyncio.sleep(0.5)
-        run = await client.beta.threads.runs.retrieve(thread_id=tid, run_id=run.id)
+    async def check_run_status():
+        while True:
+            if run.status == "completed":
+                return
+            elif run.status == "failed":
+                raise Exception(f"Run failed: {run}")
+            elif run.status == "cancelled":
+                raise Exception(f"Run was cancelled: {run}")
+    
+    try:
+        await asyncio.wait_for(check_run_status(), timeout=timeout)
+    except asyncio.TimeoutError:
+        raise Exception(f"Run failed within {timeout} seconds")
 
     messages = await client.beta.threads.messages.list(thread_id=tid)
     
