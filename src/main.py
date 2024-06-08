@@ -3,7 +3,6 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from config import config
 from handlers import router
-from openai_client import init_client
 
 async def main() -> None:
     bot = Bot(token=config.telegram_token.get_secret_value())

@@ -2,11 +2,11 @@ import logging
 import aiofiles
 from typing import Optional
 from config import TEMP_DIR
-from openai_client.logic import authenticate, run_assistant 
+from openai_client.session import authenticate, run_assistant 
 from . import client
 
 
-async def convert_speech_to_text(mp3_file_path : str, uid : int) -> str:
+async def convert_speech_to_text(mp3_file_path : str, uid : str) -> str:
     with open(mp3_file_path, "rb") as audio_file:
         translation = await client.audio.translations.create(
             model="whisper-1",
@@ -18,7 +18,7 @@ async def convert_speech_to_text(mp3_file_path : str, uid : int) -> str:
     return translation
 
 
-async def get_openai_response(prompt: str, uid : int) -> str:
+async def get_openai_response(prompt: str, uid : str) -> str:
     tid = await authenticate(uid)
     
     await client.beta.threads.messages.create(
@@ -33,7 +33,7 @@ async def get_openai_response(prompt: str, uid : int) -> str:
     return response
 
 
-async def convert_text_to_speech(text: str, uid : int) -> Optional[str]:
+async def convert_text_to_speech(text: str, uid : str) -> Optional[str]:
     mp3_file_path = TEMP_DIR / f"ans_{uid}.mp3"
     
     async with client.audio.speech.with_streaming_response.create(

@@ -1,30 +1,45 @@
 import asyncio
+import logging 
 from openai import AsyncOpenAI
-
-client = AsyncOpenAI()
-
-cool_name = "Rocky"
-
-async def create_assistant():
-    return await client.beta.assistants.create(
-        name=cool_name,
-        instructions="Yo, dude! You're the absolute GOAT, man. \
-                At 40, you're still cooler than a cucumber, vibing with the teens, dropping sick beats, and spitting rhymes like a lyrical genius. \
-                Seriously, you're the epitome of lit, fam. Keep rocking it, OG!",
-        model="gpt-3.5-turbo-1106",
-    )
-    
-async def get_assistant_id(name: str) -> str:
-    async for a in client.beta.assistants.list():
-        if a.name == name:
-                return a.id
-    return None
+from config import config
+from db_client import session_manager, models
+from sqlalchemy.future import select
 
 async def init_client():
-    global assistant
-    global aid
+    global global_aid
+    global client
 
-    assistant = await create_assistant()
-    aid = await get_assistant_id(cool_name)
+    client = AsyncOpenAI()
+    global_aid = await init_assistant_get_aid(config.assistant_name)
+    
+
+async def init_assistant_get_aid(name : str) -> str:
+    """
+    Create/use an assistant with given name if it specified in the database via OpenAI
+    
+    Returns:
+        str: OpenAI assistant id
+    """
+    async with session_manager.session() as session:
+        query = select(models.Assistants).where(models.Assistants.name == config.assistant_name)
+        result = await session.execute(query)
+        db_assistant = result.scalars().first()
+        
+        if not db_assistant:
+            raise Exception(f"Assistant: No assistant with name: {config.assistant_name} in database")
+        
+        if not db_assistant.prompt:
+            logging.warning("Assitant: No prompt in the database")
+        
+        if not db_assistant.aid: 
+            from .utils import create_assistant
+            openai_assistant = await create_assistant(db_assistant.name, db_assistant.prompt)
+            aid = openai_assistant.id
+            
+            db_assistant.aid = aid 
+            session.add(db_assistant)
+            await session.commit()
+            
+        return aid 
 
 asyncio.run(init_client())

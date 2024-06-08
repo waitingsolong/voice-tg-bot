@@ -13,7 +13,7 @@ async def handle_start_command(message: types.Message):
 
 @router.message(F.voice)
 async def handle_voice_message(message: types.Message, bot: Bot):
-    uid = message.from_user.id
+    uid = str(message.from_user.id)
     voice = message.voice
     voice_resp_path = TEMP_DIR / f"req_{uid}.mp3"
     await bot.download(voice, voice_resp_path)
