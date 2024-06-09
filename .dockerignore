@@ -6,3 +6,5 @@
 *.pyc
 sessions.db
 log.log
+alembic
+alembic.ini

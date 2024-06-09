@@ -2,7 +2,7 @@ import logging
 import aiofiles
 from typing import Optional
 from config import TEMP_DIR
-from openai_client.session import authenticate, run_assistant 
+from .session import authenticate, run_assistant 
 from . import client
 
 

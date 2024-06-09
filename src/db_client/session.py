@@ -3,6 +3,7 @@ from typing import AsyncIterator
 from sqlalchemy.ext.asyncio import (AsyncConnection, AsyncSession,
                                     async_sessionmaker, create_async_engine)
 from config import config
+from models.base_model import Base
 
 class DatabaseSessionManager:
     def __init__(self, url: str):

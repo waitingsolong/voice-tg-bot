@@ -1,7 +1,9 @@
 import asyncio
-import logging 
-from . import client, global_aid   
-from db_client import session_manager, models
+import logging
+
+from models import models 
+from . import client, openai_aid   
+from db_client import session_manager
 from sqlalchemy.future import select
     
     
@@ -42,7 +44,7 @@ async def run_assistant(tid: int, timeout: float = 60.0) -> str:
     Raises:
         Exception: Waiting so long or unexpected status
     """
-    run = await client.beta.threads.runs.create(thread_id=tid, assistant_id=global_aid)
+    run = await client.beta.threads.runs.create(thread_id=tid, assistant_id=openai_aid)
 
     async def check_run_status():
         while True:
