@@ -5,9 +5,9 @@ class Settings(BaseSettings):
     telegram_token: SecretStr
     openai_api_key: SecretStr
     database_url : SecretStr
-    
-    echo_sql : bool = True
     assistant_name : str
+    
+    echo_sql : bool
 
     class Config:
         env_file = '.env'

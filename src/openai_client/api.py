@@ -2,7 +2,7 @@ import logging
 import aiofiles
 from typing import Optional
 from config import TEMP_DIR
-from .session import authenticate, run_assistant 
+from .session import authenticate, make_run 
 from . import client
 
 
@@ -27,9 +27,8 @@ async def get_openai_response(prompt: str, uid : str) -> str:
         role='user'
     )
     
-    response = await run_assistant(tid)
+    response = await make_run(tid, uid)
     
-    logging.info(f"User {uid} heard: {response}")
     return response
 
 

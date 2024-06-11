@@ -1,25 +1,41 @@
 import logging
 import asyncio
+
 from aiogram import Bot, Dispatcher
 from config import config
-from handlers import router
+
+
+def init_logs():
+    FORMAT = "%(levelname)s [%(filename)s->%(funcName)s():%(lineno)s] %(message)s"
+    LEVEL = logging.DEBUG
+    HANDLERS=[logging.StreamHandler()]
+    HANDLERS.append(logging.FileHandler("log.log", mode='w'))
+        
+    logging.basicConfig(level=LEVEL,
+                        format=FORMAT, 
+                        handlers=HANDLERS,
+    )
+    
+    
+init_logs()
+
 
 async def main() -> None:
+    from db_client import init_client as init_db_client
+    init_db_client()
+    
+    from openai_client import init_client as init_openai_client
+    await init_openai_client()
+    
+    from handlers import router
     bot = Bot(token=config.telegram_token.get_secret_value())
     dp = Dispatcher()
     dp.include_router(router)
+    
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO,
-                        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                        handlers=[
-                            logging.FileHandler("log.log", mode="w"),
-                            logging.StreamHandler()
-                        ]
-    )
-    logger = logging.getLogger('__name__')
-    
     asyncio.run(main())
+    
