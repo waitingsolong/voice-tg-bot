@@ -1,12 +1,14 @@
 import logging
+import json
 
 from typing import Optional
-from sqlalchemy import select
+from sqlalchemy import select, update
 from . import client, assistant 
 from db_client import session_manager
 from models.models import Users
-from .utils import (launch_run, get_last_message, handle_requires_action)
-    
+from .utils import get_last_message
+from .values import save_value, validate_value    
+
 
 async def authenticate(uid: str) -> str:
     """
@@ -29,47 +31,84 @@ async def authenticate(uid: str) -> str:
 
         tid = row[0]
         
-        if tid is None:
+        if not tid:
             thread = await client.beta.threads.create()
             logging.info(f"Thread {thread.id} created for existing user {uid}")
             tid = thread.id
-            session.add(user)
+            q = (
+                update(Users).
+                where(Users.uid == uid).
+                values(tid=tid)
+            )
+            await session.execute(q)
             await session.commit()
             return thread.id
 
         return tid
 
 
-async def make_run(tid: int, user_id: str, timeout: float = 300.0) -> Optional[str]:
+async def make_run(tid: int, uid: str) -> Optional[str]:
     """
     Runs an assistant for a given thread ID and returns the response in text format
     Handles tool call if needed
-
-    Args:
-        timeout (float): Timeout for the assistant run in seconds.
-
-    Returns:
-        str: The response in text format.
-
-    Raises:
-        Exception: If waiting too long or unexpected status.
     """
-    run = await client.beta.threads.runs.create(thread_id=tid, assistant_id=assistant.id, tool_choice='auto')
-    status = await launch_run(run, timeout)
-    
-    if status == "completed":
+    run = await client.beta.threads.runs.create_and_poll(
+        thread_id=tid, assistant_id=assistant.id, poll_interval_ms=2000, tool_choice={"type": "function", "function": {"name": "save_value"}})
+
+    if run.status == "completed":
         return await get_last_message(tid)
     
-    if status == 'requires_action':
+    if run.status == 'requires_action':
         logging.debug("Look! It requires an action")
-        await handle_requires_action(run, user_id)
+                
+        tool_outputs = []
 
-        # TODO check if requires_action rewrites messages history
-        # so in wouldn't work 
-        run = await client.beta.threads.runs.create(thread_id=tid, assistant_id=assistant.id, tool_choice='none')
-        status = await launch_run(run, timeout)
+        for tool in run.required_action.submit_tool_outputs.tool_calls:
+            logging.debug(f"Tool {tool.function.name}")
+    
+            if tool.function.name == "save_value":
+                # TODO try catch 
+                values = eval(tool.function.arguments)['values']
+                logging.debug(f"Here values before validation: {json.dumps(values)}")
+                
+                logging.debug("Let's validate values")
+                validated_values = await validate_value(values)
+                logging.debug(f"Here values after validation: {json.dumps(values)}")
 
-        if status == "completed":
-            return await get_last_message(tid)
+                # TODO reduce output? 
+                tool_outputs.append({
+                    "tool_call_id": tool.id,
+                    "output": validated_values
+                })
 
-    return None
+                if validated_values:                    
+                    logging.debug("Let's save validated values")
+                    try:
+                        async with session_manager.session() as session:
+                            await save_value(validated_values, uid, session)
+                        logging.debug("Validated values saved successfully")
+                    except Exception as e:
+                        logging.error("Error saving values to database")
+                        logging.error(e)
+                else:
+                    logging.error("No validated values provided")
+                        
+
+        # submit tools
+        try:
+            run = await client.beta.threads.runs.submit_tool_outputs_and_poll(
+              thread_id=tid,
+              run_id=run.id,
+              tool_outputs=tool_outputs
+            )
+            print("Tool outputs submitted successfully.")
+        except Exception as e:
+            print("Failed to submit tool outputs:", e)
+
+        if run.status == 'completed':
+          messages = await client.beta.threads.messages.list(thread_id=tid)
+          logging.debug(f"Here all the messages: {messages}")
+        else:
+          logging.debug(f"'requires_action' was not properly handles. Run in status: {run.status}")
+
+    return await get_last_message(tid)

@@ -19,6 +19,7 @@ async def convert_speech_to_text(mp3_file_path : str, uid : str) -> str:
 
 
 async def get_openai_response(prompt: str, uid : str) -> str:
+    logging.debug(f"Authenticating user {uid}")
     tid = await authenticate(uid)
     
     await client.beta.threads.messages.create(
@@ -27,6 +28,7 @@ async def get_openai_response(prompt: str, uid : str) -> str:
         role='user'
     )
     
+    logging.debug("Making a run")
     response = await make_run(tid, uid)
     
     return response

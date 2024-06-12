@@ -16,6 +16,22 @@ def init_logs():
                         handlers=HANDLERS,
     )
     
+    import pydantic, aiogram, openai, sqlalchemy, alembic, asyncio
+    
+    libraries = [
+        "pydantic",
+        "aiogram",
+        "openai",
+        "sqlalchemy",
+        "alembic",
+        "asyncio"
+    ]
+    
+    for lib in libraries:
+        logging.getLogger(lib).setLevel(logging.WARNING)
+        
+    logging.getLogger("aiogram").setLevel(logging.INFO)
+    
     
 init_logs()
 

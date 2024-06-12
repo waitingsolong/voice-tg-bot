@@ -1,6 +1,6 @@
 import logging 
 import openai
-import asyncio
+import json
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from openai import AsyncOpenAI
@@ -8,7 +8,6 @@ from config import config
 from db_client import session_manager
 from sqlalchemy import select, update
 from models.models import Assistants, Assistants_Tools, Tools
-from openai.types import FunctionDefinition
 
 
 async def init_client():
@@ -80,6 +79,7 @@ async def sync_assistant_with_db(name: str, session: AsyncSession):
         raise ValueError(f"Assistant with name '{name}' was not initialized.")
 
     # instructions 
+    logging.debug("Synchronizing assistant prompt with db")
     q = select(Assistants.prompt).where(Assistants.id == db_assistant_id)
     result = await session.execute(q)
     prompt = result.scalar()
@@ -89,6 +89,7 @@ async def sync_assistant_with_db(name: str, session: AsyncSession):
         logging.debug("Assistant prompt synchronized with database")
 
     # tools
+    logging.debug("Synchronizing assistant tools with db")
     q = select(Tools.src).join(
         Assistants_Tools,
         Assistants_Tools.tool_id == Tools.id
@@ -99,12 +100,11 @@ async def sync_assistant_with_db(name: str, session: AsyncSession):
     tools = result.all()
     
     if tools:
-        funcs = [{"type" : "function",
-                  "function" : FunctionDefinition(**(tool[0]))} 
-                 for tool in tools]
+        tools_list = [tool.src for tool in tools]
+        tools_json = json.dumps(tools_list, indent=2)
+        logging.debug(f"How tools look: {tools_json}")
         
-        openai.beta.assistants.update(assistant.id, tools=funcs)
-        logging.debug("Assistant tools synchronized with database")
+        openai.beta.assistants.update(assistant.id, tools=tools_list)
 
         q = (
                 update(Tools).
@@ -116,3 +116,5 @@ async def sync_assistant_with_db(name: str, session: AsyncSession):
     else:
         logging.warning("No tools specified")
             
+            
+    logging.debug("Assistant tools synchronized with database")

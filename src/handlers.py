@@ -32,7 +32,7 @@ async def handle_voice_message(message: types.Message, bot: Bot):
     # text to text
     response_text = await get_openai_response(text, uid)
     if not response_text: 
-        logging.error()
+        logging.error("No response given from text to text")
         await message.reply("Ummm.. Ahhhh...")
         return 
     

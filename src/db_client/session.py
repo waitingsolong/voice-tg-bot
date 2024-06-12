@@ -4,7 +4,6 @@ from typing import AsyncIterator
 from sqlalchemy.ext.asyncio import (AsyncConnection, AsyncSession,
                                     async_sessionmaker, create_async_engine)
 from config import config
-from models.base_model import Base
 
 
 class DatabaseSessionManager:
@@ -50,11 +49,3 @@ class DatabaseSessionManager:
             logging.exception(e)
         finally:
             await session.close()
-
-
-    async def create_all(self, connection: AsyncConnection):
-        await connection.run_sync(Base.metadata.create_all)
-
-
-    async def drop_all(self, connection: AsyncConnection):
-        await connection.run_sync(Base.metadata.drop_all)
