@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     database_url : SecretStr
     assistant_name : str
     
+    debug : bool
     echo_sql : bool
 
     class Config:

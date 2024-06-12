@@ -17,7 +17,7 @@ async def save_value(values: str, uid: str, session: AsyncSession):
             value_name = value['value']
             proofs = value['proofs']
 
-            value_result = await session.execute(select(Values).where(Values.name == value_name))
+            value_result = await session.execute(select(Values.id).where(Values.name == value_name))
             value_row = value_result.scalar()
             
             user_result = await session.execute(select(Users.id).where(Users.uid == uid))
@@ -33,15 +33,16 @@ async def save_value(values: str, uid: str, session: AsyncSession):
                 await session.flush()
             else:
                 user_value_result = await session.execute(
-                    select(Users_Values).where(
+                    select(Users_Values.id, Users_Values.proof_count).where(
                         Users_Values.user_id == user_id,
                         Users_Values.value_id == value_row.id
                     )
                 )
-                user_value_row = user_value_result.first()
+                user_value_row = user_value_result.first()[0]
 
             for proof_content in proofs:
                 logging.debug(f"Here we have a proof: {proof_content}")
+                logging.debug(f"USER_VALUE_ROW: {user_value_row} of type {type(user_value_row)}")
                 if user_value_row.proof_count < 3:
                     proof_row = Proofs(content=proof_content)
                     session.add(proof_row)

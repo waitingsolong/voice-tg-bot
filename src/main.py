@@ -9,7 +9,8 @@ def init_logs():
     FORMAT = "%(levelname)s [%(filename)s->%(funcName)s():%(lineno)s] %(message)s"
     LEVEL = logging.DEBUG
     HANDLERS=[logging.StreamHandler()]
-    HANDLERS.append(logging.FileHandler("log.log", mode='w'))
+    if config.debug:
+        HANDLERS.append(logging.FileHandler("log.log", mode='w'))
         
     logging.basicConfig(level=LEVEL,
                         format=FORMAT, 
