@@ -1,48 +1,21 @@
-import logging
 import asyncio
 
 from aiogram import Bot, Dispatcher
 from config import config
-
-
-def init_logs():
-    FORMAT = "%(levelname)s [%(filename)s->%(funcName)s():%(lineno)s] %(message)s"
-    LEVEL = logging.DEBUG
-    HANDLERS=[logging.StreamHandler()]
-    if config.debug:
-        HANDLERS.append(logging.FileHandler("log.log", mode='w'))
-        
-    logging.basicConfig(level=LEVEL,
-                        format=FORMAT, 
-                        handlers=HANDLERS,
-    )
-    
-    import pydantic, aiogram, openai, sqlalchemy, alembic, asyncio
-    
-    libraries = [
-        "pydantic",
-        "aiogram",
-        "openai",
-        "sqlalchemy",
-        "alembic",
-        "asyncio"
-    ]
-    
-    for lib in libraries:
-        logging.getLogger(lib).setLevel(logging.WARNING)
-        
-    logging.getLogger("aiogram").setLevel(logging.INFO)
-    
-    
-init_logs()
+from logs import init_logs
 
 
 async def main() -> None:
+    init_logs()
+    
     from db_client import init_client as init_db_client
     init_db_client()
     
     from openai_client import init_client as init_openai_client
     await init_openai_client()
+    
+    from amplitude_client import init_client as init_amplitude_client 
+    await init_amplitude_client()
     
     from handlers import router
     bot = Bot(token=config.telegram_token.get_secret_value())

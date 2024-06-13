@@ -56,6 +56,7 @@ async def save_value(values: str, uid: str, session: AsyncSession):
                     break
 
 
+# TODO make validate only value's value -> bool
 async def validate_value(json_values: str, model='gpt-3.5-turbo-1106') -> str:
     """
     Validate values using tool call.

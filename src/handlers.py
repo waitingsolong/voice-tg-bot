@@ -4,8 +4,8 @@ import os
 from aiogram import Bot, Router, types, F
 from aiogram.types import FSInputFile
 from aiogram.filters.command import Command
-from openai_client.api import convert_speech_to_text, get_openai_response, convert_text_to_speech
-from config import TEMP_DIR
+from openai_client.api import convert_speech_to_text, get_openai_response, convert_text_to_speech, mood_by_photo
+from config import PICS_DIR, AUDIO_DIR
 
 
 router = Router()
@@ -22,12 +22,13 @@ async def handle_voice_message(message: types.Message, bot: Bot):
     voice = message.voice
     
     # speech to text
-    voice_resp_path = TEMP_DIR / f"req_{uid}.mp3"
-    await bot.download(voice, voice_resp_path)
+    voice_req_path = AUDIO_DIR / f"{voice.file_unique_id}.mp3"
+    await bot.download(voice, voice_req_path)
     try: 
-        text = await convert_speech_to_text(voice_resp_path, uid)
+        text = await convert_speech_to_text(voice_req_path, uid)
     finally:
-        os.remove(voice_resp_path)
+        if os.path.exists(voice_req_path):
+            os.remove(voice_req_path)
         
     # text to text
     response_text = await get_openai_response(text, uid)
@@ -49,3 +50,20 @@ async def handle_voice_message(message: types.Message, bot: Bot):
         await message.reply("Sorry, I can't voice. My mom is in the room")
         await message.reply(response_text)
         
+        
+@router.message(F.photo)
+async def handle_photo(message: types.Message, bot: Bot):
+    uid = str(message.from_user.id)
+    photo = message.photo[-1]
+    
+    photo_req_path = PICS_DIR / f"{photo.file_unique_id}.jpg"
+    await bot.download(photo, photo_req_path)
+    try: 
+        resp = await mood_by_photo(photo_req_path, uid)
+    finally:
+        os.remove(photo_req_path)
+    
+    if not resp:
+        await message.reply("It's look like I'm blind. I can't see")
+    else:
+        await message.reply(resp)

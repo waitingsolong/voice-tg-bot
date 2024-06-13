@@ -11,6 +11,8 @@ from models.models import Assistants, Assistants_Tools, Tools
 
 
 async def init_client():
+    logging.debug("Initializing openai")
+    
     global assistant 
     global db_assistant_id
     global client
@@ -26,9 +28,9 @@ async def init_client():
 
 async def init_assistant(name : str, session: AsyncSession):
     """
-    Entry with name must be specified in the database
-    Checks if exist in OpenAI else create an assistant with such name and prompt in the database
-    Initializes db_assistant_id
+    Entry with name must be specified in the database.
+    Checks if exist in OpenAI else create an assistant with such name and prompt in the database.
+    Initializes db_assistant_id.
     
     Returns:
         Assistant: assistant

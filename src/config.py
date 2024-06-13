@@ -1,9 +1,11 @@
 from pydantic_settings import BaseSettings
 from pydantic import SecretStr
 
+
 class Settings(BaseSettings):
     telegram_token: SecretStr
     openai_api_key: SecretStr
+    amplitude_api_key : SecretStr
     database_url : SecretStr
     assistant_name : str
     
@@ -15,8 +17,14 @@ class Settings(BaseSettings):
 
 config = Settings()
 
+
 import os
 from pathlib import Path
 
+
 TEMP_DIR = Path("temp")
+AUDIO_DIR = Path(TEMP_DIR / "audio")
+PICS_DIR = Path(TEMP_DIR / "pics")
 os.makedirs(TEMP_DIR, exist_ok=True)
+os.makedirs(AUDIO_DIR, exist_ok=True)
+os.makedirs(PICS_DIR, exist_ok=True)
