@@ -64,13 +64,13 @@ async def validate_value(value: str, model='gpt-3.5-turbo-1106') -> str:
               "type": "function",
               "function": {
                 "name": "validate_value",
-                "description": "Validate the 'value' by following rule: If the 'value' cannot be considered a life value, return False. Valid human values: 'family', 'gaming', 'pet', 'collecting stamps'. Invalid human values: 'the', 'inside', 'Thomas'. Return True/False",
+                "description": "Validate the 'value' by following rule: If the 'value' cannot be considered a life value. Valid human values: 'family', 'fishing', 'gaming', 'pet', 'collecting stamps'. Invalid human values: 'the', 'inside', 'Thomas'.",
                 "parameters": {
                   "type": "object",
                   "properties": {
                     "value": {
                       "type": "string",
-                      "description": "A life value to be validated."
+                      "description": "A value to be validated"
                     }
                   },
                   "required": ["value"]
@@ -85,6 +85,7 @@ async def validate_value(value: str, model='gpt-3.5-turbo-1106') -> str:
             messages=messages,
             temperature=0.5,
             tools=tools,
+            max_tokens=5,
             tool_choice={"type": "function", "function": {"name": "validate_value"}}
         )
         
@@ -96,9 +97,10 @@ async def validate_value(value: str, model='gpt-3.5-turbo-1106') -> str:
         logging.error("No tools came for validation")
         return False
     
+    is_valid = 'False'
     try:
-        value = eval(tool_calls[0].function.arguments)['values']
-        value = bool(value)
+        is_valid = eval(tool_calls[0].function.arguments)['value']
+        is_valid = bool(value)
     except Exception as e:
         logging.error(f"Value {value} validating is failed")
         logging.exception(e)
@@ -111,7 +113,7 @@ async def validate_value(value: str, model='gpt-3.5-turbo-1106') -> str:
         "role": "tool",
         "tool_call_id":tool_calls[0].id,
         "name": tool_calls[0].function.name,
-        "content": f"{value}"
+        "content": f"{is_valid}"
     })
     
     model_response_with_function_call = await client.chat.completions.create(

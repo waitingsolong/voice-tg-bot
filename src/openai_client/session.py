@@ -74,7 +74,6 @@ async def make_run(tid: int, uid: str) -> Optional[str]:
                 
                 try: 
                     values = eval(tool.function.arguments)['values']
-                    values = json.loads(values.strip())
                 except Exception as e: 
                     values = []
                     logging.error(f"Error converting values as json")
@@ -86,14 +85,15 @@ async def make_run(tid: int, uid: str) -> Optional[str]:
                 validated_values = []
                 for value in values:
                     value_name = value['value']
-                    is_valid = await validate_value(value_name)
+                    res = await validate_value(value_name)
+                    is_valid = (value_name == res)
                     logging.debug(f"Validation result for {value_name}: {is_valid}")
                     if is_valid:
                         validated_values.append(value)
 
                 tool_outputs.append({
                     "tool_call_id": tool.id,
-                    "output": validated_values
+                    "output": json.dumps(validated_values)
                 })
 
                 if validated_values:                    
@@ -119,6 +119,7 @@ async def make_run(tid: int, uid: str) -> Optional[str]:
             logging.debug("Tool outputs submitted successfully.")
         except Exception as e:
             logging.error("Failed to submit tool outputs. Run could be freezed for 10 minuted", e)
+            logging.exception(e)
 
         if run.status == 'completed':
           messages = await client.beta.threads.messages.list(thread_id=tid)
