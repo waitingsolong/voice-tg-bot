@@ -53,7 +53,10 @@ async def make_run(tid: int, uid: str) -> Optional[str]:
     Handles tool call if needed
     """
     run = await client.beta.threads.runs.create_and_poll(
-        thread_id=tid, assistant_id=assistant.id, poll_interval_ms=2000, tool_choice={"type": "function", "function": {"name": "save_value"}})
+        thread_id=tid, 
+        assistant_id=assistant.id,
+        poll_interval_ms=2000,
+        tool_choice={ "type": "function", "function": {"name": "save_value"} })
 
     if run.status == "completed":
         return await get_last_message(tid)
@@ -67,15 +70,27 @@ async def make_run(tid: int, uid: str) -> Optional[str]:
             logging.debug(f"Tool {tool.function.name}")
     
             if tool.function.name == "save_value":
-                # TODO try catch 
-                values = eval(tool.function.arguments)['values']
-                logging.debug(f"Here values before validation: {json.dumps(values)}")
+                values = []
                 
+                try: 
+                    values = eval(tool.function.arguments)['values']
+                    values = json.loads(values.strip())
+                except Exception as e: 
+                    values = []
+                    logging.error(f"Error converting values as json")
+                    logging.exception(e)
+                
+                logging.debug(f"Here values before validation: {values}")
                 logging.debug("Let's validate values")
-                validated_values = await validate_value(values)
-                logging.debug(f"Here values after validation: {json.dumps(values)}")
+                
+                validated_values = []
+                for value in values:
+                    value_name = value['value']
+                    is_valid = await validate_value(value_name)
+                    logging.debug(f"Validation result for {value_name}: {is_valid}")
+                    if is_valid:
+                        validated_values.append(value)
 
-                # TODO reduce output? 
                 tool_outputs.append({
                     "tool_call_id": tool.id,
                     "output": validated_values
@@ -89,7 +104,7 @@ async def make_run(tid: int, uid: str) -> Optional[str]:
                         logging.debug("Validated values saved successfully")
                     except Exception as e:
                         logging.error("Error saving values to database")
-                        logging.error(e)
+                        logging.exception(e)
                 else:
                     logging.error("No validated values provided")
                         
@@ -101,14 +116,14 @@ async def make_run(tid: int, uid: str) -> Optional[str]:
               run_id=run.id,
               tool_outputs=tool_outputs
             )
-            print("Tool outputs submitted successfully.")
+            logging.debug("Tool outputs submitted successfully.")
         except Exception as e:
-            print("Failed to submit tool outputs:", e)
+            logging.error("Failed to submit tool outputs. Run could be freezed for 10 minuted", e)
 
         if run.status == 'completed':
           messages = await client.beta.threads.messages.list(thread_id=tid)
           logging.debug(f"Here all the messages: {messages}")
         else:
-          logging.debug(f"'requires_action' was not properly handles. Run in status: {run.status}")
+          logging.debug(f"'requires_action' was not properly handled. Run in status: {run.status}")
 
     return await get_last_message(tid)

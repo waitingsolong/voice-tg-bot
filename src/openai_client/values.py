@@ -7,12 +7,12 @@ from sqlalchemy.future import select
 from models.models import Users_Values, Values, Proofs, Users_Values_Proofs, Users
 
 
-async def save_value(values: str, uid: str, session: AsyncSession):
+async def save_value(values: list[dict], uid: str, session: AsyncSession):
     """
     Save validated values to the database for a given user.
     """
     async with session.begin():
-        for value in json.loads(values):
+        for value in values:
             logging.debug(f"Here we have a value: {value}")
             value_name = value['value']
             proofs = value['proofs']
@@ -42,7 +42,6 @@ async def save_value(values: str, uid: str, session: AsyncSession):
 
             for proof_content in proofs:
                 logging.debug(f"Here we have a proof: {proof_content}")
-                logging.debug(f"USER_VALUE_ROW: {user_value_row} of type {type(user_value_row)}")
                 if user_value_row.proof_count < 3:
                     proof_row = Proofs(content=proof_content)
                     session.add(proof_row)
@@ -56,36 +55,31 @@ async def save_value(values: str, uid: str, session: AsyncSession):
                     break
 
 
-# TODO make validate only value's value -> bool
-async def validate_value(json_values: str, model='gpt-3.5-turbo-1106') -> str:
+async def validate_value(value: str, model='gpt-3.5-turbo-1106') -> str:
     """
-    Validate values using tool call.
-
-    Returns:
-        str: An updated JSON string
+    Validate a single value using tool call and return True or False.
     """
-    
     tools = [
         {
               "type": "function",
               "function": {
                 "name": "validate_value",
-                "description": "Validate the 'values' by following rule: For each object in the 'values' array: 1) If the 'value' cannot be considered a life value, the object is not valid. Valid human values: 'family', 'fishing', 'gaming', 'pet', 'collecting stamps'. Invalid human values: 'the', 'inside', 'Thomas' 2) If the 'value' can be considered as a life value, examine each 'proof' in 'proofs': 'Proof' is a statement that shows the importance of the 'value' from the speaker's perspective. If so, it's valid. If not, remove it. If after iterating over 'proofs' the 'proofs' array is empty, delete the entry. Examples of valid values after validation: {'value': 'family', 'proofs': ['I love spending time with my family', 'Family gatherings are important to me']} -> {'value': 'family', 'proofs': ['I love spending time with my family', 'Family gatherings are important to me']}. {'value': 'the', 'proofs': ['The quick brown fox']} -> None. {'value': 'gaming', 'proofs': ['Gaming industry is booming right now', 'He played a lot']} -> None.",
+                "description": "Validate the 'value' by following rule: If the 'value' cannot be considered a life value, return False. Valid human values: 'family', 'gaming', 'pet', 'collecting stamps'. Invalid human values: 'the', 'inside', 'Thomas'. Return True/False",
                 "parameters": {
                   "type": "object",
                   "properties": {
-                    "values": {
+                    "value": {
                       "type": "string",
-                      "description": "JSON string in the following format: [{'value': <value>, 'proofs': [<proof1>, <proof2>, ...]}]. The 'values' contain the names of a person's life values, and the 'proofs' array contains statements made by the person that should justify that the value is important to them."
+                      "description": "A life value to be validated."
                     }
                   },
-                  "required": ["values"]
+                  "required": ["value"]
                 }
               }
         }
     ]
     
-    messages = [{"role": "user", "content": f"{json.dumps(json_values)}"}]
+    messages = [{"role": "user", "content": f"{value}"}]
     response = await client.chat.completions.create(
             model=model,
             messages=messages,
@@ -95,15 +89,20 @@ async def validate_value(json_values: str, model='gpt-3.5-turbo-1106') -> str:
         )
         
     response_message = response.choices[0].message 
-    logging.debug(f"Validation response(must be a tool call): {response_message}")
+    logging.debug(f"Validation response (must be a tool call): {response_message}")
 
     tool_calls = response_message.tool_calls 
     if not tool_calls: 
         logging.error("No tools came for validation")
-        return ""
+        return False
     
-    # TODO try catch 
-    tool_values = eval(tool_calls[0].function.arguments)['values']
+    try:
+        value = eval(tool_calls[0].function.arguments)['values']
+        value = bool(value)
+    except Exception as e:
+        logging.error(f"Value {value} validating is failed")
+        logging.exception(e)
+        return False 
     
     # Note that messages with role 'tool' must be a response to a preceding message with 'tool_calls'
     messages.append(response_message)
@@ -112,7 +111,7 @@ async def validate_value(json_values: str, model='gpt-3.5-turbo-1106') -> str:
         "role": "tool",
         "tool_call_id":tool_calls[0].id,
         "name": tool_calls[0].function.name,
-        "content": "true or false whatever"
+        "content": f"{value}"
     })
     
     model_response_with_function_call = await client.chat.completions.create(
@@ -121,5 +120,5 @@ async def validate_value(json_values: str, model='gpt-3.5-turbo-1106') -> str:
     )
     logging.debug(f"The response after tool call: {model_response_with_function_call.choices[0].message.content}")
         
-    return tool_values
+    return value
     

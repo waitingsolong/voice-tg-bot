@@ -36,3 +36,8 @@ async def create_assistant(name : str, prompt : str, model : str = "gpt-3.5-turb
 async def get_last_message(thread_id: str) -> Optional[str]:
     messages = await client.beta.threads.messages.list(thread_id=thread_id)
     return messages.data[0].content[0].text.value if messages.data else None
+
+
+async def get_last_message(thread_id: str) -> Optional[str]:
+    messages = await client.beta.threads.messages.list(thread_id=thread_id)
+    return messages.data[0].content[0].text.value if messages.data else None

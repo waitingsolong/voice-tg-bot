@@ -8,15 +8,13 @@ from typing import Optional
 from config import TEMP_DIR
 from .session import authenticate, make_run 
 from . import client
-from config import config
 
 
 async def convert_speech_to_text(mp3_file_path : str, uid : str) -> str:
-    async with aiofiles.open(mp3_file_path, "rb") as audio_file:
-        audio_content = await audio_file.read()
+    with open(mp3_file_path, "rb") as audio_file:
         translation = await client.audio.translations.create(
             model="whisper-1",
-            file=audio_content,
+            file=audio_file,
             response_format="text"
         )
     

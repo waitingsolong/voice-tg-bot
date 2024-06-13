@@ -1,11 +1,11 @@
 import logging
 
-from amplitude import Amplitude
+from amplitude import Amplitude, BaseEvent
 from concurrent.futures import ThreadPoolExecutor
 from config import config
 
 
-async def init_amplitude_client():
+async def init_client():
     """
     Initialize the Amplitude client and the ThreadPoolExecutor for asynchronous event tracking.
     """
@@ -29,10 +29,10 @@ async def track_event(user_id : str, event_name : str, event_properties : dict =
     """
 
     def send_event():
-        amplitude_client.track(event={
-            'user_id': user_id,
-            'event_type': event_name,
-            'event_properties': event_properties
-        })
+        amplitude_client.track(BaseEvent(
+            user_id= user_id,
+            event_type= event_name,
+            event_properties=event_properties
+        ))
 
     amplitude_executor.submit(send_event)

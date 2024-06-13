@@ -23,8 +23,8 @@ from pathlib import Path
 
 
 TEMP_DIR = Path("temp")
-AUDIO_DIR = Path(TEMP_DIR / "audio")
-PICS_DIR = Path(TEMP_DIR / "pics")
+AUDIO_DIR = TEMP_DIR / "audio"
+PICS_DIR = TEMP_DIR / "pics"
 os.makedirs(TEMP_DIR, exist_ok=True)
 os.makedirs(AUDIO_DIR, exist_ok=True)
 os.makedirs(PICS_DIR, exist_ok=True)

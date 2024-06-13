@@ -1,11 +1,13 @@
 import logging
 import os
+import io
 
 from aiogram import Bot, Router, types, F
 from aiogram.types import FSInputFile
 from aiogram.filters.command import Command
 from openai_client.api import convert_speech_to_text, get_openai_response, convert_text_to_speech, mood_by_photo
-from config import PICS_DIR, AUDIO_DIR
+from config import TEMP_DIR, PICS_DIR, AUDIO_DIR
+from amplitude_client import track_event
 
 
 router = Router()
@@ -13,6 +15,8 @@ router = Router()
 
 @router.message(Command("start"))
 async def handle_start_command(message: types.Message):
+    await track_event(message.from_user.id, "Start command")
+    
     await message.answer("Let me hear you")
 
 
@@ -20,6 +24,8 @@ async def handle_start_command(message: types.Message):
 async def handle_voice_message(message: types.Message, bot: Bot):
     uid = str(message.from_user.id)
     voice = message.voice
+    
+    await track_event(uid, "Voice Message Received")
     
     # speech to text
     voice_req_path = AUDIO_DIR / f"{voice.file_unique_id}.mp3"
@@ -55,6 +61,8 @@ async def handle_voice_message(message: types.Message, bot: Bot):
 async def handle_photo(message: types.Message, bot: Bot):
     uid = str(message.from_user.id)
     photo = message.photo[-1]
+    
+    await track_event(uid, "Photo Received")
     
     photo_req_path = PICS_DIR / f"{photo.file_unique_id}.jpg"
     await bot.download(photo, photo_req_path)
