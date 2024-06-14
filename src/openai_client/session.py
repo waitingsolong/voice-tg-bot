@@ -7,7 +7,7 @@ from . import client, assistant
 from db_client import session_manager
 from models.models import Users
 from .utils import get_last_message
-from .values import save_value, validate_value    
+from .values import save_values, validate_value    
 
 
 async def authenticate(uid: str) -> str:
@@ -56,7 +56,7 @@ async def make_run(tid: int, uid: str) -> Optional[str]:
         thread_id=tid, 
         assistant_id=assistant.id,
         poll_interval_ms=2000,
-        tool_choice={ "type": "function", "function": {"name": "save_value"} })
+        tool_choice={ "type": "function", "function": {"name": "save_values"} })
 
     if run.status == "completed":
         return await get_last_message(tid)
@@ -69,7 +69,7 @@ async def make_run(tid: int, uid: str) -> Optional[str]:
         for tool in run.required_action.submit_tool_outputs.tool_calls:
             logging.debug(f"Tool {tool.function.name}")
     
-            if tool.function.name == "save_value":
+            if tool.function.name == "save_values":
                 values = []
                 
                 try: 
@@ -85,9 +85,7 @@ async def make_run(tid: int, uid: str) -> Optional[str]:
                 validated_values = []
                 for value in values:
                     value_name = value['value']
-                    res = await validate_value(value_name)
-                    is_valid = (value_name == res)
-                    logging.debug(f"Validation result for {value_name}: {is_valid}")
+                    is_valid = await validate_value(value_name)
                     if is_valid:
                         validated_values.append(value)
 
@@ -100,7 +98,7 @@ async def make_run(tid: int, uid: str) -> Optional[str]:
                     logging.debug("Let's save validated values")
                     try:
                         async with session_manager.session() as session:
-                            await save_value(validated_values, uid, session)
+                            await save_values(validated_values, uid, session)
                         logging.debug("Validated values saved successfully")
                     except Exception as e:
                         logging.error("Error saving values to database")

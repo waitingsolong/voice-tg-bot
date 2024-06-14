@@ -18,7 +18,7 @@ async def init_client():
     amplitude_executor = ThreadPoolExecutor(max_workers=5)
 
 
-async def track_event(user_id : str, event_name : str, event_properties : dict = {}):
+async def track_event(user_id: str, event_name: str, event_properties: dict = {}):
     """
     Track an event asynchronously using the Amplitude client.
     
@@ -28,11 +28,12 @@ async def track_event(user_id : str, event_name : str, event_properties : dict =
         event_properties (dict, optional): Additional properties of the event.
     """
 
-    def send_event():
-        amplitude_client.track(BaseEvent(
-            user_id= user_id,
-            event_type= event_name,
-            event_properties=event_properties
-        ))
+    amplitude_executor.submit(send_event, user_id, event_name, event_properties)
 
-    amplitude_executor.submit(send_event)
+
+def send_event(user_id: str, event_name: str, event_properties: dict):
+    amplitude_client.track(BaseEvent(
+        user_id=user_id,
+        event_type=event_name,
+        event_properties=event_properties
+    ))

@@ -41,3 +41,13 @@ async def get_last_message(thread_id: str) -> Optional[str]:
 async def get_last_message(thread_id: str) -> Optional[str]:
     messages = await client.beta.threads.messages.list(thread_id=thread_id)
     return messages.data[0].content[0].text.value if messages.data else None
+
+
+def find_bool(s : str) -> Optional[bool]:
+    s = s.lower()
+    if 'false' in s:
+        return False 
+    elif 'true' in s:
+        return True
+    else:
+        return None

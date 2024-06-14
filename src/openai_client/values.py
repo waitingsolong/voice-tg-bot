@@ -1,13 +1,13 @@
 import logging
-import json
 
 from . import client
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from models.models import Users_Values, Values, Proofs, Users_Values_Proofs, Users
+from .utils import find_bool
 
 
-async def save_value(values: list[dict], uid: str, session: AsyncSession):
+async def save_values(values: list[dict], uid: str, session: AsyncSession):
     """
     Save validated values to the database for a given user.
     """
@@ -55,7 +55,7 @@ async def save_value(values: list[dict], uid: str, session: AsyncSession):
                     break
 
 
-async def validate_value(value: str, model='gpt-3.5-turbo-1106') -> str:
+async def validate_value(value_name: str, model='gpt-3.5-turbo-1106') -> bool:
     """
     Validate a single value using tool call and return True or False.
     """
@@ -63,30 +63,29 @@ async def validate_value(value: str, model='gpt-3.5-turbo-1106') -> str:
         {
               "type": "function",
               "function": {
-                "name": "validate_value",
-                "description": "Validate the 'value' by following rule: If the 'value' cannot be considered a life value. Valid human values: 'family', 'fishing', 'gaming', 'pet', 'collecting stamps'. Invalid human values: 'the', 'inside', 'Thomas'.",
+                "name": "foo",
+                "description": "Whatever",
                 "parameters": {
                   "type": "object",
                   "properties": {
-                    "value": {
-                      "type": "string",
-                      "description": "A value to be validated"
+                    "is_valid": {
+                      "type": "boolean",
+                      "description": "Indicator which shows if 'value' is truly a life value. If 'value' cannot be considered a life value then 'is_valid_life_value' is true, else false. Example of valid human values: 'family', 'fishing', 'gaming', 'pet', 'collecting stamps'. Invalid human values: 'the', 'inside', 'Thomas'."
                     }
                   },
-                  "required": ["value"]
+                  "required": ["is_valid"]
                 }
               }
         }
     ]
     
-    messages = [{"role": "user", "content": f"{value}"}]
+    messages = [{"role": "user", "content": f"value={value_name}"}]
     response = await client.chat.completions.create(
             model=model,
             messages=messages,
             temperature=0.5,
             tools=tools,
-            max_tokens=5,
-            tool_choice={"type": "function", "function": {"name": "validate_value"}}
+            tool_choice={"type": "function", "function": {"name": "foo"}}
         )
         
     response_message = response.choices[0].message 
@@ -97,14 +96,20 @@ async def validate_value(value: str, model='gpt-3.5-turbo-1106') -> str:
         logging.error("No tools came for validation")
         return False
     
-    is_valid = 'False'
-    try:
-        is_valid = eval(tool_calls[0].function.arguments)['value']
-        is_valid = bool(value)
+    is_valid = False
+    try:        
+        arg = tool_calls[0].function.arguments
+        logging.debug(f"Tool call arguments: {arg}")
+        is_valid = find_bool(arg)
+        
+        if is_valid is None:
+            logging.error(f"Value {value_name} validation is failed. {is_valid} returned")
+        else:
+            logging.debug(f"Value {value_name} validated successfully: {is_valid}")
+            
     except Exception as e:
-        logging.error(f"Value {value} validating is failed")
+        logging.error(f"Value {value_name} validation is failed. {is_valid} returned")
         logging.exception(e)
-        return False 
     
     # Note that messages with role 'tool' must be a response to a preceding message with 'tool_calls'
     messages.append(response_message)
@@ -113,7 +118,7 @@ async def validate_value(value: str, model='gpt-3.5-turbo-1106') -> str:
         "role": "tool",
         "tool_call_id":tool_calls[0].id,
         "name": tool_calls[0].function.name,
-        "content": f"{is_valid}"
+        "content": "whatever"
     })
     
     model_response_with_function_call = await client.chat.completions.create(
@@ -122,5 +127,5 @@ async def validate_value(value: str, model='gpt-3.5-turbo-1106') -> str:
     )
     logging.debug(f"The response after tool call: {model_response_with_function_call.choices[0].message.content}")
         
-    return value
+    return is_valid
     
