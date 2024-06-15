@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     database_url : SecretStr
     assistant_name : str
     filename : str
+    redis_url : SecretStr
     
     debug : bool
     echo_sql : bool

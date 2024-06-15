@@ -1,31 +1,9 @@
-services:
-  redis:
-    image: redis
-    ports:
-      - 6379:6379
-    networks:
-      - app-tier
-    healthcheck:
-      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
-    volumes:
-      - redis_data:/data
-    
+services:  
   bot:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: telegram_bot
     env_file: .env
-    depends_on:
-      - redis
-    networks:
-      - app-tier
     ports:
       - "8080:8080"
-
-volumes:
-  redis_data:
-
-networks:
-  app-tier:
-    driver: bridge

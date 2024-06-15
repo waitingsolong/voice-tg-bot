@@ -5,7 +5,7 @@ from aiogram import Bot, Router, types, F
 from aiogram.types import FSInputFile
 from aiogram.filters.command import Command
 from openai_client.api import convert_speech_to_text, get_openai_response, convert_text_to_speech, mood_by_photo
-from config import PICS_DIR, AUDIO_DIR
+from config import PICS_DIR, AUDIO_DIR, config
 from amplitude_client import track_event
 from aiogram.filters.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
@@ -17,9 +17,8 @@ from aiogram.filters import StateFilter
 
 
 router = Router()
-# redis_client =redis=Redis(host='redis', port=6379, db=0)
-# storage = RedisStorage(redis_client)
-storage = MemoryStorage()
+redis_client = Redis().from_url(config.redis_url.get_secret_value())
+storage = RedisStorage(redis_client)
 
 
 class Form(StatesGroup):
