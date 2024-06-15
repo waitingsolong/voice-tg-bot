@@ -1,4 +1,5 @@
 import logging
+import sys
 
 from config import config
 
@@ -15,9 +16,10 @@ def init_logs():
                         handlers=HANDLERS,
     )
     
-    import pydantic, aiogram, openai, sqlalchemy, alembic, asyncio
+    import requests, pydantic, aiogram, openai, sqlalchemy, alembic, asyncio
     
     libraries = [
+        "requests",
         "pydantic",
         "aiogram",
         "openai",
@@ -28,7 +30,6 @@ def init_logs():
     
     for lib in libraries:
         logging.getLogger(lib).setLevel(logging.WARNING)
-        
-    logging.getLogger("aiogram").setLevel(logging.INFO)
     
+    logging.getLogger("aiogram").setLevel(logging.INFO)
     

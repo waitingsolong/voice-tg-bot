@@ -1,19 +1,21 @@
 import logging
 import json
 
-from typing import Optional
 from sqlalchemy import select, update
 from . import client, assistant 
 from db_client import session_manager
 from models.models import Users
-from .utils import get_last_message
 from .values import save_values, validate_value    
 
 
+# TODO tid is not used from database, it might be removed
 async def authenticate(uid: str) -> str:
     """
     Returns thread id corresponding to user from the db. 
     Creates such mapping if needed.
+    
+    Returns:
+        str: tid
     """
     async with session_manager.session() as session:
         q = select(Users.tid).where(Users.uid == uid)
@@ -47,19 +49,23 @@ async def authenticate(uid: str) -> str:
         return tid
 
 
-async def make_run(tid: int, uid: str) -> Optional[str]:
+async def make_run(tid: int, uid: str, tool_choice: dict = None, instructions = None) -> None:
     """
     Runs an assistant for a given thread ID and returns the response in text format
     Handles tool call if needed
+    
+    Returns:
+        Run: run
     """
     run = await client.beta.threads.runs.create_and_poll(
         thread_id=tid, 
         assistant_id=assistant.id,
         poll_interval_ms=2000,
-        tool_choice={ "type": "function", "function": {"name": "save_values"} })
-
+        tool_choice=tool_choice,
+        instructions=instructions)
+    
     if run.status == "completed":
-        return await get_last_message(tid)
+        return run
     
     if run.status == 'requires_action':
         logging.debug("Look! It requires an action")
@@ -120,9 +126,6 @@ async def make_run(tid: int, uid: str) -> Optional[str]:
             logging.exception(e)
 
         if run.status == 'completed':
-          messages = await client.beta.threads.messages.list(thread_id=tid)
-          logging.debug(f"Here all the messages: {messages}")
+          return run
         else:
           logging.debug(f"'requires_action' was not properly handled. Run in status: {run.status}")
-
-    return await get_last_message(tid)

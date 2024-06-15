@@ -59,3 +59,25 @@ class Users_Values_Proofs(BaseModel):
     id = mapped_column(INTEGER, primary_key=True, autoincrement=True)
     user_value_id = mapped_column(INTEGER, ForeignKey('users_values.id'), nullable=False)
     proof_id = mapped_column(INTEGER, ForeignKey('proofs.id'), nullable=False)
+    
+    
+class Vector_Stores(BaseModel):
+    __tablename__ = 'vector_stores'
+    id = mapped_column(INTEGER, primary_key=True, autoincrement=True)
+    vsid = mapped_column(TEXT)
+    name = mapped_column(TEXT, nullable=False)
+
+
+class Files(BaseModel):
+    __tablename__ = 'files'
+    id = mapped_column(INTEGER, primary_key=True, autoincrement=True)
+    fid = mapped_column(TEXT)
+    name = mapped_column(TEXT, nullable=False)
+
+
+class Vector_Stores_Files(BaseModel):
+    __tablename__ = 'vector_stores_files'
+    id = mapped_column(INTEGER, primary_key=True, autoincrement=True)
+    vector_store_id = mapped_column(INTEGER, ForeignKey('vector_stores.id'), nullable=False)
+    file_id = mapped_column(INTEGER, ForeignKey('files.id'), nullable=False)
+    

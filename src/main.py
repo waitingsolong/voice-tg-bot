@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 from aiogram import Bot, Dispatcher
 from config import config
@@ -17,13 +18,19 @@ async def main() -> None:
     from amplitude_client import init_client as init_amplitude_client 
     await init_amplitude_client()
     
-    from handlers import router
+    from handlers import router, storage
     bot = Bot(token=config.telegram_token.get_secret_value())
-    dp = Dispatcher()
+    dp = Dispatcher(storage=storage)
     dp.include_router(router)
     
-    await bot.delete_webhook(drop_pending_updates=True)
-    await dp.start_polling(bot)
+    try:
+        await bot.delete_webhook(drop_pending_updates=True)
+        await dp.start_polling(bot)
+    finally:
+        await dp.storage.close()
+        logging.debug("Storage connection closed")
+        await bot.session.close()
+        logging.debug("Bot session closed")
 
 
 if __name__ == "__main__":

@@ -33,12 +33,12 @@ async def save_values(values: list[dict], uid: str, session: AsyncSession):
                 await session.flush()
             else:
                 user_value_result = await session.execute(
-                    select(Users_Values.id, Users_Values.proof_count).where(
+                    select(Users_Values).where(
                         Users_Values.user_id == user_id,
                         Users_Values.value_id == value_row.id
                     )
                 )
-                user_value_row = user_value_result.first()[0]
+                user_value_row = user_value_result.scalars().first()
 
             for proof_content in proofs:
                 logging.debug(f"Here we have a proof: {proof_content}")

@@ -1,13 +1,14 @@
 import logging
 import aiofiles
 import base64
-import requests
 import logging
+import uuid
 
 from typing import Optional
-from config import TEMP_DIR
-from .session import authenticate, make_run 
+from config import AUDIO_DIR
+from .session import make_run 
 from . import client
+from .utils import get_tool_choice, get_last_message, get_instructions
 
 
 async def convert_speech_to_text(mp3_file_path : str, uid : str) -> str:
@@ -22,9 +23,11 @@ async def convert_speech_to_text(mp3_file_path : str, uid : str) -> str:
     return translation
 
 
-async def get_openai_response(prompt: str, uid : str) -> str:
-    logging.debug(f"Authenticating user {uid}")
-    tid = await authenticate(uid)
+async def get_openai_response(prompt: str, uid : str, tid : str, mode = None) -> str:
+    """
+    Args:
+        mode (str): "doctor" | "spy" | None 
+    """
     
     await client.beta.threads.messages.create(
         thread_id=tid,
@@ -32,14 +35,25 @@ async def get_openai_response(prompt: str, uid : str) -> str:
         role='user'
     )
     
-    logging.debug("Making a run")
-    response = await make_run(tid, uid)
+    tool_choice = get_tool_choice(mode)
+    logging.debug(f"Forced tool choice for request: {tool_choice}")
     
-    return response
+    instructions = get_instructions(mode)
+    logging.debug(f"Forced instructions for request: {instructions}")
+    
+    logging.debug("Making a run")
+    run = await make_run(tid, uid, tool_choice=tool_choice, instructions=instructions)
+    
+    # debug
+    messages = await client.beta.threads.messages.list(thread_id=tid)
+    logging.critical(f"Messages: {messages}")
+    logging.critical(f"Run itself: {run}")
+    
+    return await get_last_message(tid)
 
 
 async def convert_text_to_speech(text: str, uid : str) -> Optional[str]:
-    mp3_file_path = TEMP_DIR / f"ans_{uid}.mp3"
+    mp3_file_path = AUDIO_DIR / f"{uid}_{uuid.uuid4().hex}.mp3"
     
     async with client.audio.speech.with_streaming_response.create(
         model="tts-1",
@@ -56,7 +70,7 @@ async def convert_text_to_speech(text: str, uid : str) -> Optional[str]:
         return None
 
 
-async def mood_by_photo(photo_path : str, uid : str) -> Optional[str]:
+async def mood_by_photo(photo_path : str) -> Optional[str]:
     def encode_image(image_bytes):
         return base64.b64encode(image_bytes).decode('utf-8')
     

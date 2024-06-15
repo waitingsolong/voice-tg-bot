@@ -3,7 +3,7 @@ import logging
 
 from typing import Optional
 from . import client   
-from config import TEMP_DIR
+from config import TEMP_DIR, config
 
 
 async def save_messages_to_temp(thread_id: int) -> None:
@@ -38,11 +38,6 @@ async def get_last_message(thread_id: str) -> Optional[str]:
     return messages.data[0].content[0].text.value if messages.data else None
 
 
-async def get_last_message(thread_id: str) -> Optional[str]:
-    messages = await client.beta.threads.messages.list(thread_id=thread_id)
-    return messages.data[0].content[0].text.value if messages.data else None
-
-
 def find_bool(s : str) -> Optional[bool]:
     s = s.lower()
     if 'false' in s:
@@ -51,3 +46,36 @@ def find_bool(s : str) -> Optional[bool]:
         return True
     else:
         return None
+    
+def get_tool_choice(mode: str = None) -> Optional[dict]:
+    """
+    Args:
+        mode (str): "file" | "func" | None 
+    """
+    if mode is None:
+        return None
+    
+    if mode == "doctor":
+        return {"type": "file_search"}
+    elif mode == "spy":
+        return { "type": "function", "function": {"name": "save_values"} }
+    else:
+        logging.warning("Unspecified mode for request")
+        return None 
+    
+
+def get_instructions(mode: str = None) -> Optional[str]:
+    """
+    Args:
+        mode (str): "file" | "func" | None 
+    """
+    if mode is None:
+        return None
+    
+    if mode == "doctor":
+        return """You have been provided with a manual on how to correctly answer user questions. Try to find the answer there. If you find the correct answer, answer so and insert the name of the file in the annotation of the answer"""
+    elif mode == "spy" and config.assistant_name != "Pam":
+        return """You are a live interlocutor. You are really involved in the conversation with the user and are ready to help him answer any request, you want to know more about his personality. At the same time, you are an undercover spy. Your task: to reveal the personality of your interlocutor from different sides, to find out his life values. As the conversation progresses, ask leading questions and you can clarify details that interest you. Be interested in different things."""
+    else:
+        logging.warning("Unspecified mode for request")
+        return None 
