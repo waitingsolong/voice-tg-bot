@@ -49,25 +49,27 @@ async def authenticate(uid: str) -> str:
         return tid
 
 
-async def make_run(tid: int, uid: str, tool_choice: dict = None, instructions = None) -> None:
+async def make_run(tid: int, uid: str, tool_choice: dict = None, instructions = None):
     """
     Runs an assistant for a given thread ID and returns the response in text format
     Handles tool call if needed
-    
+     
     Returns:
         Run: run
     """
     run = await client.beta.threads.runs.create_and_poll(
         thread_id=tid, 
         assistant_id=assistant.id,
-        poll_interval_ms=2000,
         tool_choice=tool_choice,
-        instructions=instructions)
+        timeout = 120.0,
+        poll_interval_ms=2000,
+        instructions=instructions,
+        )
     
     if run.status == "completed":
         return run
     
-    if run.status == 'requires_action':
+    elif run.status == 'requires_action':
         logging.debug("Look! It requires an action")
                 
         tool_outputs = []
@@ -129,3 +131,7 @@ async def make_run(tid: int, uid: str, tool_choice: dict = None, instructions = 
           return run
         else:
           logging.debug(f"'requires_action' was not properly handled. Run in status: {run.status}")
+    else:
+        logging.error(f"Run failed with status: {run.status}")
+        return run
+    

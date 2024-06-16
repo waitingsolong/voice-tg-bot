@@ -17,8 +17,13 @@ from aiogram.filters import StateFilter
 
 
 router = Router()
-redis_client = Redis().from_url(config.redis_url.get_secret_value())
-storage = RedisStorage(redis_client)
+
+storage = None
+if not config.debug:
+    redis_client = Redis().from_url(config.redis_url.get_secret_value())
+    storage = RedisStorage(redis_client)
+else:
+    storage = MemoryStorage()
 
 
 class Form(StatesGroup):
@@ -26,24 +31,29 @@ class Form(StatesGroup):
 
 
 @router.message(StateFilter(None))
-async def init_handler(message: types.Message, state: FSMContext):
+async def init_handler(message: types.Message, bot: Bot, state: FSMContext):
     await state.set_state(Form.tid)
     
     uid = str(message.from_user.id)
     logging.debug(f"Authenticating user {uid}")
     tid = await authenticate(uid)
     logging.debug(f"User {uid} authentificated")
-    
-    await message.reply("You were authentificated. Please, come again")
-    
+     
     await state.update_data(tid=tid)
     
+    if message.voice: 
+        await handle_voice_message(message, bot, state)
+    elif message.text: 
+        await handle_text_message(message, state)
+    elif message.photo:
+        await handle_photo(message, bot)
+        
 
 @router.message(Command("start"))
 async def handle_start_command(message: types.Message):
     await track_event(message.from_user.id, "Start command")
     
-    await message.answer("Let me hear you")
+    await message.answer("Let me hear you, or see you, or ask me about the anxiety")
 
 
 @router.message(F.voice)

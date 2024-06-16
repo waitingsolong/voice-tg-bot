@@ -2,7 +2,7 @@ import logging
 import openai
 import json
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from config import config
 from openai import AsyncOpenAI
 from config import config, DATA_DIR
 from db_client import session_manager
@@ -27,9 +27,9 @@ async def init_client():
 
 async def sync_assistant_with_openai(name : str):
     """
-    Entry with name must be specified in the database.
-    Checks if exist in OpenAI else create an assistant with such name and prompt in the database.
-    Initializes db_assistant_id.
+    1) Assistant entry with name must be specified in the database.
+    2) Checks if exist in OpenAI else create an assistant with such name and prompt in the database.
+    3) Initializes global db_assistant_id.
     
     Returns:
         Assistant: assistant
@@ -94,7 +94,7 @@ async def sync_assistant_with_db(assistant, db_assistant_id) :
             
             if prompt:
                 openai.beta.assistants.update(assistant.id, instructions=prompt)
-                logging.debug("Assistant prompt synchronized with database")
+                logging.debug(f"Assistant prompt synchronized with database: {prompt}")
         
             # tools
             logging.debug("Synchronizing assistant tools with db")
@@ -107,28 +107,23 @@ async def sync_assistant_with_db(assistant, db_assistant_id) :
             result = await session.execute(q)
             tools = result.all()
             
-            if tools:
-                tools_list = [tool.src for tool in tools]
-                tools_list.append({"type": "file_search"})
-                tools_json = json.dumps(tools_list, indent=2)
-                logging.debug(f"How tools look: {tools_json}")
-                
-                openai.beta.assistants.update(assistant.id, tools=tools_list)
-        
-                q = (
-                        update(Tools).
-                        where(Tools.sync == False).
-                        values(sync=True)
-                    )
-        
-                await session.execute(q)
-                logging.debug("Assistant tools synchronized with database")
-            else:
-                logging.warning("No tools specified")
+            tools_list = [tool.src for tool in tools]
+            tools_list.append({"type": "file_search"})
+            tools_json = json.dumps(tools_list, indent=2)
+            logging.debug(f"How tools look: {tools_json}")
+            
+            openai.beta.assistants.update(assistant.id, tools=tools_list)
+    
+            q = (
+                    update(Tools).
+                    where(Tools.sync == False).
+                    values(sync=True)
+                )
+    
+            await session.execute(q)
+            logging.debug("Assistant tools synchronized with database")
 
 
-# I update m2m vector_store to file but I actually don't know either file was uploaded or not 
-# Files are not cleaned from database
 async def init_file_system(assistant):
     """
     Adds file from data/{config.filename} to db
@@ -171,13 +166,15 @@ async def init_file_system(assistant):
                 logging.exception(e)
                 return 
 
-            # upload files
+            # sync files
             logging.debug("Synchronizing files")
             if not config.filename: 
+                logging.warning("No files specified")
                 return 
+            
             file_names = [config.filename]
             file_paths = [DATA_DIR / fn for fn in file_names]
-            logging.debug(f"Files to synchronize: {file_paths}")
+            logging.debug(f"Files specified for work: {file_paths}")
             assert len(file_paths) == len(file_names)
 
             unsync_indices = []
@@ -192,12 +189,16 @@ async def init_file_system(assistant):
 
 
             logging.debug(f"Files which are not yet synchronized: {[file_paths[i] for i in unsync_indices]}")
-            logging.debug("Loading files to openai")        
+            logging.debug("Loading files to openai")    
+            
+            if not unsync_indices: 
+                logging.warning("All files already in database. Nothing to synchronize")
+                return    
 
-            purpose = 'assistants'
             sync_file_ids = []
             sync_indices = []
 
+            # uploading files
             for i, ind in enumerate(unsync_indices):
                 fp = file_paths[ind]
                 logging.debug(f"Loading file {fp} to openai")
@@ -228,12 +229,13 @@ async def init_file_system(assistant):
                 vector_store = await client.beta.vector_stores.retrieve(
                     vector_store_id=openai_vs.id
                 )
-                logging.error(f"Here's your vector store: {vector_store}")
+                logging.debug(f"Here's your vector store: {vector_store}")
             
             except Exception as e: 
                 logging.error("Nooo! Updating assistant failed. Uploaded files would be not synchronized with him")
                 logging.exception(e)
-
+                
+            
             def sync_names(i : int):
                 return file_names[unsync_indices[i]]
             
@@ -252,4 +254,5 @@ async def init_file_system(assistant):
 
                 db_vs_file = Vector_Stores_Files(vector_store_id = db_vs.id, file_id = db_file.id)
                 session.add(db_vs_file)
+        
         

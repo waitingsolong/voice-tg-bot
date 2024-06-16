@@ -6,9 +6,9 @@ import uuid
 
 from typing import Optional
 from config import AUDIO_DIR
-from .session import make_run 
+from .session import make_run
 from . import client
-from .utils import get_tool_choice, get_last_message, get_instructions
+from .utils import get_tool_choice, get_last_message, get_instructions, get_completed_run_else_None
 
 
 async def convert_speech_to_text(mp3_file_path : str, uid : str) -> str:
@@ -23,8 +23,12 @@ async def convert_speech_to_text(mp3_file_path : str, uid : str) -> str:
     return translation
 
 
-async def get_openai_response(prompt: str, uid : str, tid : str, mode = None) -> str:
+async def get_openai_response(prompt: str, uid : str, tid : str, mode = None) -> Optional[None]:
     """
+    Modes specify run parameters
+    "doctor" - for making answers via file search
+    "spy" - for collecting, validating and saving to database life values from user's requests via openai functions api 
+     
     Args:
         mode (str): "doctor" | "spy" | None 
     """
@@ -43,11 +47,29 @@ async def get_openai_response(prompt: str, uid : str, tid : str, mode = None) ->
     
     logging.debug("Making a run")
     run = await make_run(tid, uid, tool_choice=tool_choice, instructions=instructions)
+    logging.debug(f"The run itself: {run}")
     
-    # debug
+    run = await get_completed_run_else_None(run)
+    
+    #debug
     messages = await client.beta.threads.messages.list(thread_id=tid)
-    logging.critical(f"Messages: {messages}")
-    logging.critical(f"Run itself: {run}")
+    logging.debug(f"Messages: {messages}")
+    
+    if not run:
+        return None
+    
+    messages = list(await client.beta.threads.messages.list(thread_id=tid, run_id=run.id))
+    message_content = messages[0][1][0].content[0].text
+    annotations = message_content.annotations
+    citations = []
+    for index, annotation in enumerate(annotations):
+        message_content.value = message_content.value.replace(annotation.text, f"[{index}]")
+        if file_citation := getattr(annotation, "file_citation", None):
+            cited_file = await client.files.retrieve(file_citation.file_id)
+            citations.append(f"[{index}] {cited_file.filename}")
+
+    logging.critical(f"Result content: {message_content.value}")
+    logging.critical("\n".join(f"Result citations: {citations}"))
     
     return await get_last_message(tid)
 

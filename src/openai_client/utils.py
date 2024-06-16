@@ -54,8 +54,7 @@ def get_tool_choice(mode: str = None) -> Optional[dict]:
     """
     if mode is None:
         return None
-    
-    if mode == "doctor":
+    elif mode == "doctor":
         return {"type": "file_search"}
     elif mode == "spy":
         return { "type": "function", "function": {"name": "save_values"} }
@@ -71,11 +70,16 @@ def get_instructions(mode: str = None) -> Optional[str]:
     """
     if mode is None:
         return None
-    
-    if mode == "doctor":
-        return """You have been provided with a manual on how to correctly answer user questions. Try to find the answer there. If you find the correct answer, answer so and insert the name of the file in the annotation of the answer"""
+    elif mode == "doctor":
+        return """You have a manual in format question-answer. Answer no more than you were asked. Try to find the answer there, if not: pretend to be dead. If you used file to answer text it name in the end"""
     elif mode == "spy" and config.assistant_name != "Pam":
         return """You are a live interlocutor. You are really involved in the conversation with the user and are ready to help him answer any request, you want to know more about his personality. At the same time, you are an undercover spy. Your task: to reveal the personality of your interlocutor from different sides, to find out his life values. As the conversation progresses, ask leading questions and you can clarify details that interest you. Be interested in different things."""
     else:
         logging.warning("Unspecified mode for request")
         return None 
+    
+    
+async def get_completed_run_else_None(run):
+    if run.status == 'completed':
+        return run
+    
