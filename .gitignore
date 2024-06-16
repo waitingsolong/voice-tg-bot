@@ -5,3 +5,7 @@
 *.pyc
 sessions.db
 log.log
+
+# .dockerignore
+# alembic
+# alembic.ini

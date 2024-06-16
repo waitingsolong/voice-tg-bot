@@ -1,0 +1,33 @@
+{
+  "type": "function",
+  "function": {
+    "name": "save_value",
+    "description": "Saves objects consisting of: 1)'value'. Name of the user's life value, 2)'proofs'. An array of proofs: statements said by user confirming that 'value' means something to him.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string",
+                "description": "The life value of the user. Examples of valid values: 'family', 'fishing', 'sport', 'friendship', 'pet', 'collecting stamps'. Examples of invalid values: 'the', 'Thomas', 'around'."
+              },
+              "proofs": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "description": "Text excerpts from the user's statements supporting this value. Each proof must justify why the value is important to speaker."
+                }
+              }
+            },
+            "required": ["value", "proofs"]
+          }
+        }
+      },
+      "required": ["values"]
+    }
+  }
+}
