@@ -58,19 +58,6 @@ async def get_openai_response(prompt: str, uid : str, tid : str, mode = None) ->
     if not run:
         return None
     
-    messages = list(await client.beta.threads.messages.list(thread_id=tid, run_id=run.id))
-    message_content = messages[0][1][0].content[0].text
-    annotations = message_content.annotations
-    citations = []
-    for index, annotation in enumerate(annotations):
-        message_content.value = message_content.value.replace(annotation.text, f"[{index}]")
-        if file_citation := getattr(annotation, "file_citation", None):
-            cited_file = await client.files.retrieve(file_citation.file_id)
-            citations.append(f"[{index}] {cited_file.filename}")
-
-    logging.critical(f"Result content: {message_content.value}")
-    logging.critical("\n".join(f"Result citations: {citations}"))
-    
     return await get_last_message(tid)
 
 

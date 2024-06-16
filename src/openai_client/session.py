@@ -127,10 +127,11 @@ async def make_run(tid: int, uid: str, tool_choice: dict = None, instructions = 
             logging.error("Failed to submit tool outputs. Run could be freezed for 10 minuted", e)
             logging.exception(e)
 
-        if run.status == 'completed':
-          return run
-        else:
+        if run.status != 'completed':
           logging.debug(f"'requires_action' was not properly handled. Run in status: {run.status}")
+        
+        return run
+          
     else:
         logging.error(f"Run failed with status: {run.status}")
         return run

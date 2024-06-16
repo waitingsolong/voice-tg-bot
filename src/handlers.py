@@ -108,7 +108,7 @@ async def handle_photo(message: types.Message, bot: Bot):
     photo_req_path = PICS_DIR / f"{photo.file_unique_id}.jpg"
     await bot.download(photo, photo_req_path)
     try: 
-        resp = await mood_by_photo(photo_req_path, uid)
+        resp = await mood_by_photo(photo_req_path)
     finally:
         os.remove(photo_req_path)
     

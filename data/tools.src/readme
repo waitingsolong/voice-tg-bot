@@ -1,2 +1,7 @@
-Insert to tools.src in database as jsonb 
-Would be automatically synchronized with current assistant every launch
+1) Insert to tools.src in database as jsonb
+2) Create connection between assistant and tool 
+3) Get corresponding via assistant_name env. variable
+
+Would be automatically synchronized with openai every launch  
+
+(opt) Change 'tool_choice' parameter when creating a run to execute function by force 

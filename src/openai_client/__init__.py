@@ -9,7 +9,9 @@ from db_client import session_manager
 from sqlalchemy import select, update
 from models.models import Assistants, Assistants_Tools, Tools, Vector_Stores, Files, Vector_Stores_Files
 
+
 assistant, db_assistant_id, client = None, None, None 
+
 
 async def init_client():
     logging.debug("Initializing openai")
