@@ -1,6 +1,7 @@
 [Setup]
 1. Set all environment variables listed in /src/config.py 
 2. Launch via /src/main.py | Dockerfile | docker-compose.yml  
+3. (opt) Deploy on railway 
 
 Environment variables: 
 - DEBUG creates log file, set aiogram storage to MemoryStorage  
@@ -9,6 +10,9 @@ Environment variables:
 - DATABASE_URL must use async driver
 
 It connects OpenAI so turn VPN if needed 
+
+Notes:
+- By default redis setup by private url. Commit 'file search, redis' contains docker-compose.yml to setup redis locally
 
 [Features]
 Telegram bot which can: 
